@@ -4,7 +4,7 @@
 #Requires -Version 7.4
 
 # Use these parameters to customize the deployment instead of modifying the default parameter values
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess = $true)]
 Param(
     [Parameter(Position = 1)]
     [string]$Location,
@@ -56,7 +56,7 @@ Import-Module .\scripts\PowerShell\Generate-Password.psm1
 [securestring]$SqlPassword = New-RandomPassword 25
 
 # Remove the Generate-Password module from the session
-Remove-Module Generate-Password
+Remove-Module Generate-Password -WhatIf:$false
 
 $CmdLetParameters.Add('sqlPassword', $SqlPassword)
 
@@ -68,6 +68,17 @@ if ($DeploymentResult.ProvisioningState -eq 'Succeeded') {
     Write-Host "🔥 Deployment succeeded."
 
     $DeploymentResult.Outputs | Format-Table -Property Key, @{Name = 'Value'; Expression = { $_.Value.Value } }
+
+    if (Test-Path -LiteralPath $JsonParamFile) {
+        if ($PSCmdlet.ShouldProcess($JsonParamFile, 'Remove generated JSON parameter file')) {
+            try {
+                Remove-Item -LiteralPath $JsonParamFile -Force -ErrorAction Stop
+            }
+            catch {
+                Write-Warning "Deployment succeeded, but failed to remove generated JSON parameter file '$JsonParamFile': $($_.Exception.Message)"
+            }
+        }
+    }
 }
 else {
     $DeploymentResult
