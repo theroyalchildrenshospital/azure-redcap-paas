@@ -18,7 +18,7 @@ echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
 #
 ####################################################################################
 
-apt-get update -qq && apt-get install cron sendmail -yqq
+apt-get update -qq && apt-get install cron sendmail ghostscript -yqq
 
 ####################################################################################
 #
