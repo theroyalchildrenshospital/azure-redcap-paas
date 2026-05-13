@@ -9,8 +9,8 @@ echo "Custom container startup"
 ####################################################################################
 
 # Find the latest mysqli.so file in the extensions directory and add it to the redcap.ini file
-# MYSQLI_SO_PATH=$(find /usr/local/lib/php/extensions/ -name "mysqli.so" -print 2>/dev/null | sort -V | tail -n 1)
-# echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
+MYSQLI_SO_PATH=$(find /usr/local/lib/php/extensions/ -name "mysqli.so" -print 2>/dev/null | sort -V | tail -n 1)
+echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
 
 ####################################################################################
 #
@@ -18,27 +18,12 @@ echo "Custom container startup"
 #
 ####################################################################################
 
-apt-get update -qq && apt-get install cron msmtp msmtp-mta ca-certificates ghostscript imagemagick libmagickwand-dev pkg-config gcc make autoconf php-pear -yqq
-
-
-####################################################################################
-# Install and enable PHP Imagick extension
-####################################################################################
-
 apt-get update -qq && apt-get install -yqq \
-  imagemagick \
-  libmagickwand-dev \
-  ghostscript \
-  pkg-config \
-  gcc \
-  make \
-  autoconf \
-  php-pear
-
-if ! php -m | grep -qi '^imagick$'; then
-  printf "\n" | pecl install imagick
-  echo "extension=imagick.so" > /home/site/ini/imagick.ini
-fi
+  cron \
+  msmtp \
+  msmtp-mta \
+  ca-certificates \
+  ghostscript 
 
 # Allow ImageMagick PDF read/write
 if [ -f /etc/ImageMagick-6/policy.xml ]; then
@@ -93,7 +78,7 @@ echo "DBSslCa=$DBSslCa" >> /etc/environment
 sed -i "s|date.timezone=UTC|date.timezone=$WEBSITE_TIME_ZONE|" /usr/local/etc/php/conf.d/php.ini
 
 # Configure the ImageMagick policy to allow PDF read/write
-sed -i 's~<policy domain="coder" rights="none" pattern="PDF" />~<policy domain="coder" rights="read | write" pattern="PDF" />~' /etc/ImageMagick-6/policy.xml
+# sed -i 's~<policy domain="coder" rights="none" pattern="PDF" />~<policy domain="coder" rights="read | write" pattern="PDF" />~' /etc/ImageMagick-6/policy.xml
 
 # Disallow reading from the temp directory by adding a location block to nginx config
 # But only do this once
