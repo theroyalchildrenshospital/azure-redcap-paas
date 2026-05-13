@@ -9,8 +9,8 @@ echo "Custom container startup"
 ####################################################################################
 
 # Find the latest mysqli.so file in the extensions directory and add it to the redcap.ini file
-MYSQLI_SO_PATH=$(find /usr/local/lib/php/extensions/ -name "mysqli.so" -print 2>/dev/null | sort -V | tail -n 1)
-echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
+# MYSQLI_SO_PATH=$(find /usr/local/lib/php/extensions/ -name "mysqli.so" -print 2>/dev/null | sort -V | tail -n 1)
+# echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
 
 ####################################################################################
 #
@@ -18,7 +18,60 @@ echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
 #
 ####################################################################################
 
-apt-get update -qq && apt-get install cron sendmail ghostscript -yqq
+apt-get update -qq && apt-get install cron msmtp msmtp-mta ca-certificates ghostscript imagemagick libmagickwand-dev pkg-config gcc make autoconf php-pear -yqq
+
+
+####################################################################################
+# Install and enable PHP Imagick extension
+####################################################################################
+
+apt-get update -qq && apt-get install -yqq \
+  imagemagick \
+  libmagickwand-dev \
+  ghostscript \
+  pkg-config \
+  gcc \
+  make \
+  autoconf \
+  php-pear
+
+if ! php -m | grep -qi '^imagick$'; then
+  printf "\n" | pecl install imagick
+  echo "extension=imagick.so" > /home/site/ini/imagick.ini
+fi
+
+# Allow ImageMagick PDF read/write
+if [ -f /etc/ImageMagick-6/policy.xml ]; then
+  sed -i 's~<policy domain="coder" rights="none" pattern="PDF" />~<policy domain="coder" rights="read|write" pattern="PDF" />~' /etc/ImageMagick-6/policy.xml
+fi
+
+####################################################################################
+#
+# SMTP Relay Setup
+#
+####################################################################################
+
+cat > /etc/msmtprc <<EOF
+defaults
+auth           off
+tls            on
+tls_starttls   on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        /tmp/msmtp.log
+
+account default
+host ${smtpFQDN}
+port ${smtpPort}
+from ${fromEmailAddress}
+EOF
+
+chmod 600 /etc/msmtprc
+
+echo 'sendmail_path = "/usr/sbin/sendmail -t -i"' > /home/site/ini/mail.ini
+
+echo "Sendmail target:"
+ls -l /usr/sbin/sendmail
+ls -l /etc/alternatives/sendmail || true
 
 ####################################################################################
 #
