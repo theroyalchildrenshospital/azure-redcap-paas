@@ -20,6 +20,12 @@ echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
 
 apt-get update -qq && apt-get install cron -yqq
 
+# Allow ImageMagick to read/write PDFs (policy is restrictive by default)
+POLICY_FILE=$(find /etc/ImageMagick-* -name policy.xml 2>/dev/null | head -1)
+if [ -n "$POLICY_FILE" ]; then
+    sed -i 's|<policy domain="coder" rights="none" pattern="PDF" />|<policy domain="coder" rights="read\|write" pattern="PDF" />|g' "$POLICY_FILE"
+fi
+
 ####################################################################################
 #
 # Configure REDCap cronjob to run every minute
