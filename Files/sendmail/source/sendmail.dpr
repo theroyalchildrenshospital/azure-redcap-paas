@@ -6,7 +6,7 @@ program sendmail;
 
   fake sendmail for windows
 
-  Copyright (c) 2004-2011, Byron Jones, sendmail@glob.com.au
+  Copyright (c) 2004-2020, Byron Jones, sendmail@glob.com.au
   All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,14 @@ program sendmail;
 
 <ChangeLog.txt>
 
-  version 32 (18 june 2011)
+  version 33 - Michel <sendmail@dotmol.nl> (27 july 2020)
+    - Make the source compile in Embarcadero Delphi 10.3 with the default included Indy 10-260
+    - Needs install of http://madshi.net/index.htm (madExcept 5.1.0) in Delphi Builder
+    - Updated OpenSSL DLL's to 1.0.2u
+    - Forced TLS v1.1 & v1.2, don't allow v1.0
+
+  Byron Jones:
+  version 32 - (18 june 2011)
     - fix handling of invalid recipients
 
   version 31 (15 sep, 2010)
@@ -162,8 +169,8 @@ program sendmail;
 
 {$APPTYPE CONSOLE}
 
-{$I IdCompilerDefines.inc}
-{$IFNDEF INDY100}indy version 10 is required; built against 10_5_6{$ENDIF}
+//{$I IdCompilerDefines.inc}
+//{$IFNDEF INDY100}indy version 10 is required; built against 10_5_6{$ENDIF}
 
 {$DEFINE USE_MADEXCEPT}
 
@@ -172,14 +179,12 @@ uses
   IdGlobal, IdResourceStringsCore, IdGlobalProtocols, IdResourceStrings, IdExplicitTLSClientServerBase,
   IDSmtp, IDPOP3, IdMessage, IdEmailAddress, IdLogFile, IdWinSock2, IdIOHandler, IdSSLOpenSSL, IdException
   {$IFDEF USE_MADEXCEPT}
-  , madExcept, madLinkDisAsm, madListHardware, madListProcesses, madListModules
+  , madExcept, madLinkDisAsm;
   {$ENDIF}
-  ;
-
 // ---------------------------------------------------------------------------
 
 const
-  VERSION = '32';
+  VERSION = '33';
 
 // ---------------------------------------------------------------------------
 
@@ -742,6 +747,9 @@ begin
             try
               TIdSSLContext.Create.Free;
               smtp.IOHandler := TIdSSLIOHandlerSocketOpenSSL.Create(smtp);
+              //smtp.IOHandler.SSLOptions.Method := sslvTLSv1_2;
+
+              TIdSSLIOHandlerSocketOpenSSL(smtp.IOHandler).SSLOptions.SSLVersions := [sslvTLSv1_1, sslvTLSv1_2];
 
               if (smtpSSL = ssAuto) then
                 if (strToIntDef(smtpPort, 25) = 465) then
@@ -793,8 +801,8 @@ begin
           if (hostname = '') then
           begin
             setLength(hostname, 255);
-            GetHostName(pChar(hostname), length(hostname));
-            hostname := string(pChar(hostname));
+            GetHostName(PAnsiChar(hostname), length(hostname));
+            hostname := string(PAnsiChar(hostname));
             if (pos('.', hostname) = 0) and (defaultDomain <> '') then
               hostname := hostname + '.' + defaultDomain;
           end;
@@ -882,7 +890,7 @@ begin
                 header := false;
               if (header) and (LowerCase(copy(sl[i], 1, 5)) = 'bcc: ') then
                 continue;
-              smtp.IOHandler.WriteLn(sl[i], TIdTextEncoding.Default);
+              smtp.IOHandler.WriteLn(sl[i], IndyTextEncoding_OSDefault());
             end;
           finally
             sl.Free;
