@@ -38,7 +38,7 @@ fi
 
 cat > /etc/msmtprc <<EOF
 defaults
-auth           off
+auth           on
 tls            on
 tls_starttls   on
 tls_trust_file /etc/ssl/certs/ca-certificates.crt
@@ -48,6 +48,8 @@ account default
 host ${smtpFQDN}
 port ${smtpPort}
 from ${fromEmailAddress}
+username ${smtpUsername}
+password ${smtpPassword}
 EOF
 
 chmod 600 /etc/msmtprc
