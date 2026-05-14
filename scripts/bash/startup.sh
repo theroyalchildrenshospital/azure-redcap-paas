@@ -48,7 +48,7 @@ account default
 host ${smtpFQDN}
 port ${smtpPort}
 from ${fromEmailAddress}
-username ${smtpUsername}
+user ${smtpUsername}
 password ${smtpPassword}
 EOF
 
