@@ -76,7 +76,7 @@ param availabilityZonesEnabled bool = false
 param existingPrivateDnsZonesResourceGroupId string = ''
 param existingVirtualNetworkId string = ''
 
-param appServiceTimeZone string = 'UTC'
+param appServiceTimeZone string = 'Australia/Melbourne'
 
 @description('If true, the deployment will create all resources in a single resource group. If false, resources will be distributed across multiple resource groups according to their type.')
 param singleResourceGroupDeployment bool = false

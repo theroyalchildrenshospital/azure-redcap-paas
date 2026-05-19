@@ -22,5 +22,7 @@ UPDATE $APPSETTING_DBName.redcap_config SET value = '$APPSETTING_StorageAccount'
 UPDATE $APPSETTING_DBName.redcap_config SET value = '$APPSETTING_StorageKey' WHERE field_name = 'azure_app_secret';
 UPDATE $APPSETTING_DBName.redcap_config SET value = '$APPSETTING_StorageContainerName' WHERE field_name = 'azure_container';
 UPDATE $APPSETTING_DBName.redcap_config SET value = '4' WHERE field_name = 'edoc_storage_option';
+UPDATE $APPSETTING_DBName.redcap_config SET value = '1' WHERE field_name = 'database_query_tool_enabled';
+
 REPLACE INTO $APPSETTING_DBName.redcap_config (field_name, value) VALUES ('azure_quickstart', '1');
 EOF

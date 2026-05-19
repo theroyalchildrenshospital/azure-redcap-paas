@@ -40,7 +40,7 @@ param prerequisiteCommand string
 
 param existingPrivateDnsZonesResourceGroupId string = ''
 
-param timeZone string = 'UTC'
+param timeZone string = 'Australia/Melbourne'
 
 param uamiId string
 

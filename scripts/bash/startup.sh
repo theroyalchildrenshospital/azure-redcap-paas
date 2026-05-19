@@ -52,13 +52,14 @@ user ${smtpUsername}
 password ${smtpPassword}
 EOF
 
+chown www-data:www-data /etc/msmtprc
 chmod 600 /etc/msmtprc
 
-echo 'sendmail_path = "/usr/sbin/sendmail -t -i"' > /home/site/ini/mail.ini
+MSMTP_PATH=$(command -v msmtp)
 
-echo "Sendmail target:"
-ls -l /usr/sbin/sendmail
-ls -l /etc/alternatives/sendmail || true
+cat > /home/site/ini/99-msmtp.ini <<EOF
+sendmail_path = "$MSMTP_PATH -C /etc/msmtprc -t -i"
+EOF
 
 ####################################################################################
 #

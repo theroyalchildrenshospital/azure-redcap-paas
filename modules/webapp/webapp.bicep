@@ -32,7 +32,7 @@ param appInsights_instrumentationKey string
 param availabilityZonesEnabled bool = false
 param enablePrivateEndpoint bool
 
-param timeZone string = 'UTC'
+param timeZone string = 'Australia/Melbourne'
 
 // This is not a secret, it's a Key Vault reference
 #disable-next-line secure-secrets-in-params
