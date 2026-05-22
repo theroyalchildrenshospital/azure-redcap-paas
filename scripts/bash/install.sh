@@ -26,3 +26,4 @@ UPDATE $APPSETTING_DBName.redcap_config SET value = '1' WHERE field_name = 'data
 
 REPLACE INTO $APPSETTING_DBName.redcap_config (field_name, value) VALUES ('azure_quickstart', '1');
 EOF
+/usr/bin/mysql -u$APPSETTING_DBUserName -h10.155.160.135 -p$APPSETTING_DBPassword --ssl=true --ssl-ca=/home/site/wwwroot/DigiCertGlobalRootG2.crt.pem
