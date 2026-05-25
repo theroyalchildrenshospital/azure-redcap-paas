@@ -1,6 +1,9 @@
 #!/bin/bash
 
-echo "Custom container startup"
+set -euxo pipefail
+
+echo "STARTUP VERSION: 2026-05-15-01"
+date
 
 ####################################################################################
 #
@@ -18,12 +21,23 @@ echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
 #
 ####################################################################################
 
-apt-get update -qq && apt-get install -yqq \
+apt-get update -qq
+
+apt-get install -y \
   cron \
   msmtp \
   msmtp-mta \
   ca-certificates \
-  ghostscript 
+  ghostscript \
+  2>&1 | tee /tmp/apt-install.log
+
+echo "Install exit code: ${PIPESTATUS[0]}"
+
+echo "Checking installed binaries:"
+command -v cron || echo "cron missing"
+command -v crontab || echo "crontab missing"
+command -v msmtp || echo "msmtp missing"
+command -v sendmail || echo "sendmail missing"
 
 # Allow ImageMagick PDF read/write
 if [ -f /etc/ImageMagick-6/policy.xml ]; then
@@ -101,6 +115,19 @@ if ! grep -q "$BLOCK_MARKER" "$NGINX_CONF_FILE"; then
     nginx -t && service nginx restart
 fi
 
-# Start the cron service and add the REDCap cronjob
-service cron start
-(crontab -l 2>/dev/null; echo "* * * * * /usr/local/bin/php /home/site/wwwroot/cron.php > /dev/null")|crontab
+# Start cron directly; service cron may not exist in this container
+if command -v cron >/dev/null 2>&1; then
+    cron
+else
+    echo "ERROR: cron binary not found"
+    command -v crontab || true
+fi
+
+# Remove existing REDCap cron entry to avoid duplicates
+crontab -l 2>/dev/null | grep -v "/home/site/wwwroot/cron.php" | crontab - || true
+
+# Add REDCap cronjob every minute with logging
+(crontab -l 2>/dev/null; echo "* * * * * . /etc/environment; /usr/local/bin/php /home/site/wwwroot/cron.php >> /tmp/redcap-cron.log 2>&1") | crontab -
+
+echo "Current crontab:"
+crontab -l
