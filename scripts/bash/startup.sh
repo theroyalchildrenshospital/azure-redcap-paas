@@ -25,6 +25,7 @@ apt-get update -qq
 
 apt-get install -y \
   cron \
+  unzip \
   msmtp \
   msmtp-mta \
   ca-certificates \
