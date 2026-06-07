@@ -111,21 +111,9 @@ fi
 # SMTP Relay Setup
 ####################################################################################
 
-rm -f /home/site/ini/99-msmtp.ini
-
-: "${smtpFQDN:?smtpFQDN app setting is missing}"
-: "${smtpPort:?smtpPort app setting is missing}"
-: "${fromEmailAddress:?fromEmailAddress app setting is missing}"
-
-if [ -n "${smtpUsername:-}" ] && [ -n "${smtpPassword:-}" ]; then
-  SMTP_AUTH="on"
-else
-  SMTP_AUTH="off"
-fi
-
 cat > /etc/msmtprc <<EOF
 defaults
-auth           ${SMTP_AUTH}
+auth           on
 tls            on
 tls_starttls   on
 tls_trust_file /etc/ssl/certs/ca-certificates.crt
@@ -135,18 +123,12 @@ account default
 host ${smtpFQDN}
 port ${smtpPort}
 from ${fromEmailAddress}
-EOF
-
-if [ "$SMTP_AUTH" = "on" ]; then
-cat >> /etc/msmtprc <<EOF
 user ${smtpUsername}
 password ${smtpPassword}
 EOF
-fi
 
+chown www-data:www-data /etc/msmtprc
 chmod 600 /etc/msmtprc
-touch /tmp/msmtp.log
-chmod 666 /tmp/msmtp.log
 
 MSMTP_PATH=$(command -v msmtp)
 
