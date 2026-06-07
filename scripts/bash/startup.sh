@@ -46,6 +46,43 @@ command -v sendmail || echo "sendmail missing"
 command -v gs || echo "ghostscript missing"
 command -v convert || echo "imagemagick convert missing"
 
+
+####################################################################################
+# SMTP Relay Setup
+####################################################################################
+
+: "${smtpFQDN:?smtpFQDN smtp FQDN setting is missing}"
+: "${smtpPort:?smtpPort smtp port setting is missing}"
+: "${fromEmailAddress:?fromEmailAddress app email address setting is missing}"
+: "${smtpUsername:?smtpUsername smtp username setting is missing}"
+: "${smtpPassword:?smtpPassword smtp password setting is missing}"
+
+
+cat > /etc/msmtprc <<EOF
+defaults
+auth           on
+tls            on
+tls_starttls   on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        /tmp/msmtp.log
+
+account default
+host ${smtpFQDN}
+port ${smtpPort}
+from ${fromEmailAddress}
+user ${smtpUsername}
+password ${smtpPassword}
+EOF
+
+chown www-data:www-data /etc/msmtprc
+chmod 600 /etc/msmtprc
+
+MSMTP_PATH=$(command -v msmtp)
+
+cat > /home/site/ini/99-msmtp.ini <<EOF
+sendmail_path = "$MSMTP_PATH -C /etc/msmtprc -t -i"
+EOF
+
 ####################################################################################
 # Install/load PHP Imagick extension if missing
 ####################################################################################
@@ -82,7 +119,7 @@ else
       pear \
       2>&1 | tee /tmp/apt-install-imagick-build.log
 
-    printf "\n" | pecl install imagick
+    printf "\n" | pecl install imagick 2>&1 | tee /tmp/pecl-imagick.log
 
     IMAGICK_SO_PATH=$(find "$PHP_EXT_DIR" -name "imagick.so" -print 2>/dev/null | sort -V | tail -n 1)
   fi
@@ -107,34 +144,7 @@ if [ -f /etc/ImageMagick-6/policy.xml ]; then
   sed -i 's~<policy domain="coder" rights="none" pattern="PDF" />~<policy domain="coder" rights="read|write" pattern="PDF" />~' /etc/ImageMagick-6/policy.xml
 fi
 
-####################################################################################
-# SMTP Relay Setup
-####################################################################################
 
-cat > /etc/msmtprc <<EOF
-defaults
-auth           on
-tls            on
-tls_starttls   on
-tls_trust_file /etc/ssl/certs/ca-certificates.crt
-logfile        /tmp/msmtp.log
-
-account default
-host ${smtpFQDN}
-port ${smtpPort}
-from ${fromEmailAddress}
-user ${smtpUsername}
-password ${smtpPassword}
-EOF
-
-chown www-data:www-data /etc/msmtprc
-chmod 600 /etc/msmtprc
-
-MSMTP_PATH=$(command -v msmtp)
-
-cat > /home/site/ini/99-msmtp.ini <<EOF
-sendmail_path = "$MSMTP_PATH -C /etc/msmtprc -t -i"
-EOF
 
 ####################################################################################
 #
