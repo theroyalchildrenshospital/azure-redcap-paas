@@ -87,25 +87,30 @@ EOF
 # Install/load PHP Imagick extension if missing
 ####################################################################################
 
-PHP_EXT_DIR="$(php -i | awk -F'=> ' '/^extension_dir/ {print $2; exit}' | awk '{print $1}')"
+mkdir -p /home/site/ini
+rm -f /home/site/ini/imagick.ini
+
+PHP_EXT_DIR="$(php-config --extension-dir)"
 PHP_EXT_API="$(basename "$PHP_EXT_DIR")"
+
+echo "PHP_EXT_DIR=$PHP_EXT_DIR"
+echo "PHP_EXT_API=$PHP_EXT_API"
 
 PERSISTENT_EXT_DIR="/home/site/php-extensions/${PHP_EXT_API}"
 PERSISTENT_IMAGICK_SO="${PERSISTENT_EXT_DIR}/imagick.so"
 
 mkdir -p "$PERSISTENT_EXT_DIR"
 
-# Remove stale/bad ini files first
-rm -f /home/site/ini/imagick.ini
+echo "PERSISTENT_EXT_DIR=$PERSISTENT_EXT_DIR"
+ls -ld /home/site /home/site/php-extensions "$PERSISTENT_EXT_DIR" || true
 
-# If saved imagick.so exists, use it
 if [ -f "$PERSISTENT_IMAGICK_SO" ]; then
   echo "Using saved Imagick extension: $PERSISTENT_IMAGICK_SO"
   echo "extension=${PERSISTENT_IMAGICK_SO}" > /home/site/ini/imagick.ini
 else
   echo "Saved Imagick extension not found. Checking runtime extension folder."
 
-  IMAGICK_SO_PATH=$(find "$PHP_EXT_DIR" -name "imagick.so" -print 2>/dev/null | sort -V | tail -n 1)
+  IMAGICK_SO_PATH="$(find "$PHP_EXT_DIR" -name "imagick.so" -print 2>/dev/null | sort -V | tail -n 1 || true)"
 
   if [ -z "$IMAGICK_SO_PATH" ]; then
     echo "Imagick not installed. Installing build dependencies and compiling with PECL."
@@ -119,21 +124,22 @@ else
       pear \
       2>&1 | tee /tmp/apt-install-imagick-build.log
 
-    printf "\n" | pecl install imagick 2>&1 | tee /tmp/pecl-imagick.log
+    printf "\n" | pecl install imagick 2>&1 | tee /tmp/pecl-imagick.log || true
 
-    IMAGICK_SO_PATH=$(find "$PHP_EXT_DIR" -name "imagick.so" -print 2>/dev/null | sort -V | tail -n 1)
+    IMAGICK_SO_PATH="$(find "$PHP_EXT_DIR" -name "imagick.so" -print 2>/dev/null | sort -V | tail -n 1 || true)"
   fi
 
-  if [ -n "$IMAGICK_SO_PATH" ]; then
+  if [ -n "$IMAGICK_SO_PATH" ] && [ -f "$IMAGICK_SO_PATH" ]; then
     echo "Caching Imagick extension to persistent storage."
     cp "$IMAGICK_SO_PATH" "$PERSISTENT_IMAGICK_SO"
     echo "extension=${PERSISTENT_IMAGICK_SO}" > /home/site/ini/imagick.ini
   else
     echo "ERROR: imagick.so was not found after PECL install"
+    cat /tmp/pecl-imagick.log || true
   fi
 fi
 
-# Validate Imagick load
+php -m | grep -i imagick || true
 php -r "var_dump(extension_loaded('imagick'));" || true
 
 ####################################################################################
