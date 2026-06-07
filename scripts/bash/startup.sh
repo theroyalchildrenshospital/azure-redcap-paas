@@ -5,6 +5,9 @@ set -euxo pipefail
 echo "STARTUP VERSION: 2026-05-15-01"
 date
 
+mkdir -p /home/site/ini
+rm -f /home/site/ini/extensions.ini
+
 ####################################################################################
 #
 # Ensure that the currently available mysqli extension is configured for PHP
@@ -12,8 +15,8 @@ date
 ####################################################################################
 
 # Find the latest mysqli.so file in the extensions directory and add it to the redcap.ini file
-MYSQLI_SO_PATH=$(find /usr/local/lib/php/extensions/ -name "mysqli.so" -print 2>/dev/null | sort -V | tail -n 1)
-echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
+# MYSQLI_SO_PATH=$(find /usr/local/lib/php/extensions/ -name "mysqli.so" -print 2>/dev/null | sort -V | tail -n 1)
+# echo "extension=${MYSQLI_SO_PATH}" > /home/site/ini/extensions.ini
 
 ####################################################################################
 #
@@ -105,14 +108,24 @@ if [ -f /etc/ImageMagick-6/policy.xml ]; then
 fi
 
 ####################################################################################
-#
 # SMTP Relay Setup
-#
 ####################################################################################
+
+rm -f /home/site/ini/99-msmtp.ini
+
+: "${smtpFQDN:?smtpFQDN app setting is missing}"
+: "${smtpPort:?smtpPort app setting is missing}"
+: "${fromEmailAddress:?fromEmailAddress app setting is missing}"
+
+if [ -n "${smtpUsername:-}" ] && [ -n "${smtpPassword:-}" ]; then
+  SMTP_AUTH="on"
+else
+  SMTP_AUTH="off"
+fi
 
 cat > /etc/msmtprc <<EOF
 defaults
-auth           on
+auth           ${SMTP_AUTH}
 tls            on
 tls_starttls   on
 tls_trust_file /etc/ssl/certs/ca-certificates.crt
@@ -122,12 +135,18 @@ account default
 host ${smtpFQDN}
 port ${smtpPort}
 from ${fromEmailAddress}
+EOF
+
+if [ "$SMTP_AUTH" = "on" ]; then
+cat >> /etc/msmtprc <<EOF
 user ${smtpUsername}
 password ${smtpPassword}
 EOF
+fi
 
-chown www-data:www-data /etc/msmtprc
 chmod 600 /etc/msmtprc
+touch /tmp/msmtp.log
+chmod 666 /tmp/msmtp.log
 
 MSMTP_PATH=$(command -v msmtp)
 
