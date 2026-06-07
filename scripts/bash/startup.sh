@@ -121,7 +121,6 @@ else
       gcc \
       make \
       autoconf \
-      pear \
       2>&1 | tee /tmp/apt-install-imagick-build.log
 
     printf "\n" | pecl install imagick 2>&1 | tee /tmp/pecl-imagick.log || true
@@ -135,6 +134,7 @@ else
     echo "extension=${PERSISTENT_IMAGICK_SO}" > /home/site/ini/imagick.ini
   else
     echo "ERROR: imagick.so was not found after PECL install"
+    cat /tmp/apt-install-imagick-build.log || true
     cat /tmp/pecl-imagick.log || true
   fi
 fi
