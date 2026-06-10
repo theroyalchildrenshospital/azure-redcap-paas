@@ -185,6 +185,13 @@ if ! grep -q "$BLOCK_MARKER" "$NGINX_CONF_FILE"; then
     location ^~ /temp/ {\
         deny all;\
     }\
+    location ~ /cron\.php$ {\
+      # Allow local system execution\
+      allow 127.0.0.1;\
+      allow ::1;\
+      # Deny all other web traffic\
+      deny all;\
+    }\
     # END REDCap_recommended_block_temp\
     ' "$NGINX_CONF_FILE"
 
