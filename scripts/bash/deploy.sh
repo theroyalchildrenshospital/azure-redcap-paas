@@ -188,7 +188,54 @@ if [ -z "$APPSETTING_redcapAppZip" ]; then
 else
   echo "Downloading REDCap zip file from storage" >> "$logFile"
 
-  wget -q -O "$redcapZipPath" "$APPSETTING_redcapAppZip"
+  if [ -z "$APPSETTING_redcapAppZip" ]; then
+    echo "APPSETTING_redcapAppZip is empty." >> "$logFile"
+    exit 1
+  fi
+
+  echo "Testing storage URL download..." >> "$logFile"
+  echo "Storage URL host: $(echo "$APPSETTING_redcapAppZip" | sed -E 's#(https://[^/?]+).*#\1#')" >> "$logFile"
+
+  # Download with visible errors.
+  # Important: keep the URL quoted because SAS tokens contain & characters.
+  wget \
+    --server-response \
+    --tries=3 \
+    --timeout=60 \
+    --secure-protocol=TLSv1_2 \
+    -O "$redcapZipPath" \
+    "$APPSETTING_redcapAppZip" \
+    >> "$logFile" 2>&1
+
+  wgetExitCode=$?
+
+  if [ "$wgetExitCode" -ne 0 ]; then
+    echo "Failed to download REDCap zip from storage. wget exit code: $wgetExitCode" >> "$logFile"
+    exit 1
+  fi
+
+  if [ ! -s "$redcapZipPath" ]; then
+    echo "Downloaded REDCap zip file is empty: $redcapZipPath" >> "$logFile"
+    exit 1
+  fi
+
+  # Check if Azure Storage returned an XML/HTML error page instead of a zip.
+  if head -c 200 "$redcapZipPath" | grep -qiE "AuthenticationFailed|AuthorizationFailure|ResourceNotFound|BlobNotFound|InvalidQueryParameterValue|<Error>|<html"; then
+    echo "Storage download returned an error response instead of a zip:" >> "$logFile"
+    head -c 2000 "$redcapZipPath" >> "$logFile"
+    exit 1
+  fi
+
+  # Validate it is a usable zip.
+  if ! unzip -t "$redcapZipPath" >> "$logFile" 2>&1; then
+    echo "Downloaded file is not a valid zip: $redcapZipPath" >> "$logFile"
+    echo "File details:" >> "$logFile"
+    ls -lh "$redcapZipPath" >> "$logFile" 2>&1 || true
+    file "$redcapZipPath" >> "$logFile" 2>&1 || true
+    exit 1
+  fi
+
+  echo "Downloaded and validated REDCap zip file from storage" >> "$logFile"
 fi
 
 # Validate zip exists
