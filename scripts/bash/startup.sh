@@ -177,56 +177,35 @@ sed -i "s|date.timezone=UTC|date.timezone=$WEBSITE_TIME_ZONE|" /usr/local/etc/ph
 # Disallow reading from the temp directory by adding a location block to nginx config
 # But only do this once
 NGINX_CONF_FILE="/etc/nginx/sites-enabled/default"
-BLOCK_MARKER="REDCap_security_block"
+BLOCK_MARKER="REDCap_recommended_block_temp"
 
-if [ -f "$NGINX_CONF_FILE" ]; then
-    echo "Checking nginx config: $NGINX_CONF_FILE"
-
-    if ! grep -q "$BLOCK_MARKER" "$NGINX_CONF_FILE"; then
-        echo "Adding REDCap security nginx block"
-
-        sed -i '/server\s*{/a \
-    # BEGIN REDCap_security_block\
-\
+if ! grep -q "$BLOCK_MARKER" "$NGINX_CONF_FILE"; then
+    sed -i '/server\s*{/a \
+    # BEGIN REDCap_recommended_block_temp\
     # Hide nginx version number where possible\
     server_tokens off;\
-\
     # HSTS - start with lower max-age in test, then increase after validation\
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;\
-\
     # Basic hardening headers\
     add_header X-Content-Type-Options "nosniff" always;\
     add_header X-Frame-Options "SAMEORIGIN" always;\
     add_header Referrer-Policy "same-origin" always;\
     add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;\
-\
-    # Block REDCap temp directory from direct web access\
     location ^~ /temp/ {\
         deny all;\
-        return 403;\
     }\
-\
-    # Prevent cron.php being called remotely\
-    location ~ /cron\\.php$ {\
-        allow 127.0.0.1;\
-        allow ::1;\
-        deny all;\
-        return 403;\
+    location ~ /cron\.php$ {\
+      # Allow local system execution\
+      allow 127.0.0.1;\
+      allow ::1;\
+      # Deny all other web traffic\
+      deny all;\
     }\
-\
-    # END REDCap_security_block\
-        ' "$NGINX_CONF_FILE"
-    else
-        echo "REDCap nginx security block already present"
-    fi
+    # END REDCap_recommended_block_temp\
+    ' "$NGINX_CONF_FILE"
 
-    echo "Validating nginx config"
-    nginx -t
-
-    echo "Restarting nginx"
-    service nginx restart
-else
-    echo "Nginx config file not found: $NGINX_CONF_FILE"
+    # Validate nginx config and restart if valid
+    nginx -t && service nginx restart
 fi
 
 # Start cron directly; service cron may not exist in this container
