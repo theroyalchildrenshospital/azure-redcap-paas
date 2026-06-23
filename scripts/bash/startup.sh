@@ -176,36 +176,64 @@ sed -i "s|date.timezone=UTC|date.timezone=$WEBSITE_TIME_ZONE|" /usr/local/etc/ph
 
 # Disallow reading from the temp directory by adding a location block to nginx config
 # But only do this once
-NGINX_CONF_FILE="/etc/nginx/sites-enabled/default"
 BLOCK_MARKER="REDCap_recommended_block_temp"
+NGINX_CONF_CANDIDATES=(
+  "/etc/nginx/sites-enabled/default"
+  "/etc/nginx/conf.d/default.conf"
+)
 
-if ! grep -q "$BLOCK_MARKER" "$NGINX_CONF_FILE"; then
+NGINX_CONF_FILE=""
+
+# Prefer the file that already contains our marker if present, otherwise first existing candidate.
+for candidate in "${NGINX_CONF_CANDIDATES[@]}"; do
+  if [ -f "$candidate" ] && grep -q "$BLOCK_MARKER" "$candidate"; then
+    NGINX_CONF_FILE="$candidate"
+    break
+  fi
+done
+
+if [ -z "$NGINX_CONF_FILE" ]; then
+  for candidate in "${NGINX_CONF_CANDIDATES[@]}"; do
+    if [ -f "$candidate" ]; then
+      NGINX_CONF_FILE="$candidate"
+      break
+    fi
+  done
+fi
+
+if [ -z "$NGINX_CONF_FILE" ]; then
+  echo "WARNING: No known nginx default config file found. Skipping nginx hardening block insertion."
+else
+  echo "Using nginx config file: $NGINX_CONF_FILE"
+
+  if ! grep -q "$BLOCK_MARKER" "$NGINX_CONF_FILE"; then
     sed -i '/server\s*{/a \
-    # BEGIN REDCap_recommended_block_temp\
-    # Hide nginx version number where possible\
-    server_tokens off;\
-    # HSTS - start with lower max-age in test, then increase after validation\
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;\
-    # Basic hardening headers\
-    add_header X-Content-Type-Options "nosniff" always;\
-    add_header X-Frame-Options "SAMEORIGIN" always;\
-    add_header Referrer-Policy "same-origin" always;\
-    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;\
-    location ^~ /temp/ {\
-        deny all;\
-    }\
-    location ~ /cron\.php$ {\
-      # Allow local system execution\
-      allow 127.0.0.1;\
-      allow ::1;\
-      # Deny all other web traffic\
-      deny all;\
-    }\
-    # END REDCap_recommended_block_temp\
-    ' "$NGINX_CONF_FILE"
+  # BEGIN REDCap_recommended_block_temp\
+  # Hide nginx version number where possible\
+  server_tokens off;\
+  # HSTS - start with lower max-age in test, then increase after validation\
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;\
+  # Basic hardening headers\
+  add_header X-Content-Type-Options "nosniff" always;\
+  add_header X-Frame-Options "SAMEORIGIN" always;\
+  add_header Referrer-Policy "same-origin" always;\
+  add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;\
+  location ^~ /temp/ {\
+    deny all;\
+  }\
+  location ~ /cron\.php$ {\
+    # Allow local system execution\
+    allow 127.0.0.1;\
+    allow ::1;\
+    # Deny all other web traffic\
+    deny all;\
+  }\
+  # END REDCap_recommended_block_temp\
+  ' "$NGINX_CONF_FILE"
 
     # Validate nginx config and restart if valid
     nginx -t && service nginx restart
+  fi
 fi
 
 # Start cron directly; service cron may not exist in this container
