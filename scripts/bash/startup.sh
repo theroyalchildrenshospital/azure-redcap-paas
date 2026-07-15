@@ -228,8 +228,19 @@ else
     # Deny all other web traffic\
     deny all;\
   }\
+  # point to our custom 404 handler\
+  error_page 404 = @missing_handler;\
+  location @missing_handler {\
+    if ($request_uri ~ ^/redcap_v) {\
+      rewrite ^ /redcap_redirect.php last;\
+    }\
+    return 404;\
+  }\
   # END REDCap_recommended_block_temp\
   ' "$NGINX_CONF_FILE"
+
+    # Update location / try_files to fall back to redcap_redirect.php instead of returning 404 directly
+    sed -i 's|try_files $uri $uri/ =404;|try_files $uri $uri/ /redcap_redirect.php;|' "$NGINX_CONF_FILE"
 
     # Validate nginx config and restart if valid
     nginx -t && service nginx restart
