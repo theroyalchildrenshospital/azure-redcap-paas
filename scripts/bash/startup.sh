@@ -211,6 +211,8 @@ else
   # BEGIN REDCap_recommended_block_temp\
   # Hide nginx version number where possible\
   server_tokens off;\
+  # Allow large file uploads (REDCap); adjust if needed\
+  client_max_body_size 128m;\
   # HSTS - start with lower max-age in test, then increase after validation\
   add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;\
   # Basic hardening headers\
